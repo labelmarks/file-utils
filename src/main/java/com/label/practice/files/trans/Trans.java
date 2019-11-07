@@ -1,6 +1,8 @@
 package com.label.practice.files.trans
         ;
 
+import com.alibaba.fastjson.JSON;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import com.label.practice.files.trans.utils.FileHelper;
@@ -9,12 +11,15 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -25,16 +30,19 @@ public class Trans {
     public static String TO_PATH_BASE = "C:\\MY";
     public static final String TO_PATH_IMAGE = "image";
     public static final String TO_PATH_VEDIO = "vedio";
-    public static String FROM_PATH = "D:\\USFUL\\anan\\my\\media";
-    public static String BACK_PATH = "D:\\USFUL\\anan\\my\\media_media_bak";
+    public static String FROM_PATH = "D:\\128";
+    public static String BACK_PATH = "D:\\128_bak";
     private static final String[] IMAGE_LIST = StringUtils.split("bmp,jpg,jpeg,png,tiff,gif,pcx,tga,exif,fpx,svg,psd,cdr,pcd,dxf,ufo,eps,ai,raw,WMF,webp", ",");
     private static final String[] VEDIO_LIST = StringUtils.split("MP4/3GP/MPG/AVI/WMV/FLV/SWF", "/");
     private static Set<String> existsFileMD5Set = Sets.newConcurrentHashSet();
+    private static Map<String, String> exists = Maps.newConcurrentMap();
 
     private static AtomicInteger transCounter = new AtomicInteger();
 
-    public static void main(String[] args) throws IOException {
+    private static AtomicBoolean isBack = new AtomicBoolean(false);
 
+    public static void main(String[] args) throws IOException {
+        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "30");
         if (ArrayUtils.isNotEmpty(args) && ArrayUtils.getLength(args) >= 2) {
             FROM_PATH = args[0];
             BACK_PATH = FROM_PATH + "_back";
@@ -42,6 +50,9 @@ public class Trans {
         }
         loadExistsFiles(new File(TO_PATH_BASE));
         trans(new File(FROM_PATH), TO_PATH_BASE, BACK_PATH);
+
+
+        System.out.println("已存在的记录：" + JSON.toJSONString(exists, true));
     }
 
     @SneakyThrows
@@ -64,6 +75,7 @@ public class Trans {
 
         String fileMD5 = getFileMD5(file);
         if (existsFileMD5Set.contains(fileMD5)) {
+            exists.put(file.getName(), fileMD5);
             return;
         }
 
@@ -75,11 +87,15 @@ public class Trans {
 
         existsFileMD5Set.add(fileMD5);
 
-        File backFile = prepareBakFile(file, backPath, fileType, fileMD5);
-        moveIfNecessary(file, backFile);
+        File backFile = null;
+        if (isBack.get()) {
+            backFile = prepareBakFile(file, backPath, fileType, fileMD5);
+            moveIfNecessary(file, backFile);
+        }
 
-
-        System.out.println("[" + transCounter.getAndIncrement() + "]\t" + file.getCanonicalPath() + "\t备份到" + backFile.getCanonicalPath() + "\t移动到" + toFile.getCanonicalPath());
+        System.out.println("[" + transCounter.getAndIncrement() + "]\t" + file.getCanonicalPath()
+                + (isBack.get() ? "\t备份到" + backFile.getCanonicalPath() : "")
+                + "\t移动到" + toFile.getCanonicalPath());
         file.delete();
     }
 
@@ -88,9 +104,9 @@ public class Trans {
         if (ArrayUtils.isEmpty(files)) {
             return;
         }
-        for (File tmpFile : files) {
+        Arrays.stream(files).parallel().forEach(tmpFile -> {
             trans(tmpFile, targetPathBase, backPath);
-        }
+        });
     }
 
     private static void prepareDir(String targetPathBase, String backPath) {
@@ -99,6 +115,7 @@ public class Trans {
         FileHelper.createDirIfIsNotExists(targetPathBase + File.separator + TO_PATH_IMAGE);
         FileHelper.createDirIfIsNotExists(targetPathBase + File.separator + TO_PATH_VEDIO);
     }
+
     @SneakyThrows
     private static File prapareTargetFile(String targetPathBase, String fileType, String fileMD5, File file) {
         String targetSubDirPath = getTargetSubDirPath(file);
@@ -106,7 +123,7 @@ public class Trans {
             return null;
         }
 
-        String targetFilePath = MessageFormat.format("{0}"+File.separator+"{1}"+File.separator+"{2}-{3}.{4}", targetPathBase, targetSubDirPath, FileHelper.getLastModifiedTime(file,"yyyyMMddHHmmss"), fileMD5, fileType);
+        String targetFilePath = MessageFormat.format("{0}" + File.separator + "{1}" + File.separator + "{2}-{3}.{4}", targetPathBase, targetSubDirPath, FileHelper.getLastModifiedTime(file, "yyyyMMddHHmmss"), fileMD5, fileType);
         return new File((targetFilePath));
     }
 
