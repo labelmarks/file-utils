@@ -30,8 +30,8 @@ public class Trans {
     public static String TO_PATH_BASE = "C:\\MY";
     public static final String TO_PATH_IMAGE = "image";
     public static final String TO_PATH_VEDIO = "vedio";
-    public static String FROM_PATH = "D:\\128";
-    public static String BACK_PATH = "D:\\128_bak";
+    public static String FROM_PATH = "D:\\119";
+    public static String BACK_PATH = "D:\\119_bak";
     private static final String[] IMAGE_LIST = StringUtils.split("bmp,jpg,jpeg,png,tiff,gif,pcx,tga,exif,fpx,svg,psd,cdr,pcd,dxf,ufo,eps,ai,raw,WMF,webp", ",");
     private static final String[] VEDIO_LIST = StringUtils.split("MP4/3GP/MPG/AVI/WMV/FLV/SWF", "/");
     private static Set<String> existsFileMD5Set = Sets.newConcurrentHashSet();
@@ -42,7 +42,7 @@ public class Trans {
     private static AtomicBoolean isBack = new AtomicBoolean(false);
 
     public static void main(String[] args) throws IOException {
-        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "30");
+//        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "30");
         if (ArrayUtils.isNotEmpty(args) && ArrayUtils.getLength(args) >= 2) {
             FROM_PATH = args[0];
             BACK_PATH = FROM_PATH + "_back";
