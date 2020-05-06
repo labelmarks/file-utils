@@ -7,9 +7,9 @@ import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import com.label.practice.files.trans.utils.FileHelper;
 import lombok.SneakyThrows;
-import lombok.extern.log4j.Log4j2;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
@@ -39,14 +39,18 @@ public class Trans {
 
     private static AtomicInteger transCounter = new AtomicInteger();
 
-    private static AtomicBoolean isBack = new AtomicBoolean(false);
+    private static AtomicBoolean IS_NEED_BACKUP = new AtomicBoolean(false);
 
     public static void main(String[] args) throws IOException {
+        System.out.println("参数：FROM_PATH TO_PATH_BASE IS_NEED_BACKUP");
 //        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "30");
         if (ArrayUtils.isNotEmpty(args) && ArrayUtils.getLength(args) >= 2) {
             FROM_PATH = args[0];
             BACK_PATH = FROM_PATH + "_back";
             TO_PATH_BASE = args[1];
+        }
+        if (ArrayUtils.getLength(args) >= 3) {
+            IS_NEED_BACKUP.set(BooleanUtils.toBoolean(args[2]));
         }
         loadExistsFiles(new File(TO_PATH_BASE));
         trans(new File(FROM_PATH), TO_PATH_BASE, BACK_PATH);
@@ -88,13 +92,13 @@ public class Trans {
         existsFileMD5Set.add(fileMD5);
 
         File backFile = null;
-        if (isBack.get()) {
+        if (IS_NEED_BACKUP.get()) {
             backFile = prepareBakFile(file, backPath, fileType, fileMD5);
             moveIfNecessary(file, backFile);
         }
 
         System.out.println("[" + transCounter.getAndIncrement() + "]\t" + file.getCanonicalPath()
-                + (isBack.get() ? "\t备份到" + backFile.getCanonicalPath() : "")
+                + (IS_NEED_BACKUP.get() ? "\t备份到" + backFile.getCanonicalPath() : "")
                 + "\t移动到" + toFile.getCanonicalPath());
         file.delete();
     }
